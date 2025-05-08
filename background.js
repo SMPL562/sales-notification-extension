@@ -9,19 +9,25 @@ function connectWebSocket() {
 
   ws.onopen = () => {
     console.log('WebSocket connected successfully');
-    reconnectAttempts = 0; // Reset attempts on successful connection
+    reconnectAttempts = 0;
+    // Start sending pings to keep connection alive
+    sendPing();
   };
 
   ws.onmessage = (event) => {
-    console.log('WebSocket message received:', event.data);
-    const saleData = JSON.parse(event.data);
-    showPopup(saleData);
+    const data = JSON.parse(event.data);
+    console.log('WebSocket message received:', data);
+    if (data.type === 'pong') {
+      console.log('Received pong from server');
+    } else {
+      showPopup(data);
+    }
   };
 
   ws.onclose = () => {
     console.log('WebSocket disconnected');
     if (reconnectAttempts < maxReconnectAttempts) {
-      const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts); // Exponential backoff
+      const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts) + Math.random() * 100; // Exponential backoff + jitter
       console.log(`Reconnecting in ${delay/1000} seconds... (Attempt ${reconnectAttempts + 1})`);
       setTimeout(connectWebSocket, delay);
       reconnectAttempts++;
@@ -32,8 +38,17 @@ function connectWebSocket() {
 
   ws.onerror = (error) => {
     console.error('WebSocket error:', error);
-    ws.close(); // Trigger onclose to handle reconnection
+    ws.close(); // Trigger onclose for reconnection
   };
+}
+
+function sendPing() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    console.log('Sending ping to server');
+    ws.send(JSON.stringify({ type: 'ping' }));
+  }
+  // Schedule next ping
+  setTimeout(sendPing, 30000); // Every 30 seconds
 }
 
 function showPopup(saleData) {
@@ -50,10 +65,19 @@ function showPopup(saleData) {
   });
 }
 
-// Keep service worker alive
-setInterval(() => {
-  console.log('Service worker ping: Keeping alive');
-}, 30000); // Every 30 seconds
+// Create an alarm to keep service worker alive
+chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 }); // Every 30 seconds
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'keepAlive') {
+    console.log('Alarm triggered: Keeping service worker alive');
+    // Check WebSocket state and reconnect if needed
+    if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+      console.log('WebSocket not connected. Reconnecting...');
+      connectWebSocket();
+    }
+  }
+});
 
 // Initialize WebSocket connection
 connectWebSocket();
