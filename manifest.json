@@ -3,7 +3,9 @@
   "name": "Sales Notification Extension",
   "version": "1.0",
   "description": "Shows a custom popup when a sale is made.",
-  "permissions": [],
+  "permissions": [
+    "alarms"
+  ],
   "background": {
     "service_worker": "background.js"
   },
