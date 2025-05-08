@@ -8,12 +8,14 @@
       text-align: center;
       padding: 20px;
       background-color: #f0f0f0;
+      overflow: hidden;
     }
     .container {
       background-color: white;
       border-radius: 10px;
       padding: 20px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      animation: shake 0.5s ease-in-out;
     }
     h1 {
       color: #2e7d32;
@@ -35,13 +37,31 @@
     .close-btn:hover {
       background-color: #1565c0;
     }
+    /* Confetti animation */
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #f00;
+      opacity: 0.8;
+      animation: fall 3s linear infinite;
+    }
+    @keyframes fall {
+      0% { transform: translateY(-100vh) rotate(0deg); opacity: 0.8; }
+      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>New Sale!</h1>
     <p id="message"></p>
-    <button class="close-btn" onclick="window.close()">Close</button>
+    <button class="close-btn" id="closeButton">Close</button>
   </div>
   <script src="popup.js"></script>
 </body>
