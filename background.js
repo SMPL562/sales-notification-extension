@@ -1,7 +1,8 @@
 let ws = null;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 10;
-const baseReconnectDelay = 5000; // 5 seconds
+const baseReconnectDelay = 5000;
+const processedMessages = new Set(); // Track processed message IDs
 
 function connectWebSocket() {
   console.log('Attempting to connect WebSocket...');
@@ -10,7 +11,6 @@ function connectWebSocket() {
   ws.onopen = () => {
     console.log('WebSocket connected successfully');
     reconnectAttempts = 0;
-    // Start sending pings to keep connection alive
     sendPing();
   };
 
@@ -20,6 +20,21 @@ function connectWebSocket() {
     if (data.type === 'pong') {
       console.log('Received pong from server');
     } else {
+      // Deduplicate messages using messageId
+      if (data.messageId && processedMessages.has(data.messageId)) {
+        console.log('Duplicate message ignored:', data.messageId);
+        return;
+      }
+      if (data.messageId) {
+        processedMessages.add(data.messageId);
+        // Clean up old message IDs to prevent memory growth
+        if (processedMessages.size > 1000) {
+          const iterator = processedMessages.entries();
+          for (let i = 0; i < 500; i++) {
+            iterator.next().value && processedMessages.delete(iterator.next().value[0]);
+          }
+        }
+      }
       showPopup(data);
     }
   };
@@ -27,7 +42,7 @@ function connectWebSocket() {
   ws.onclose = () => {
     console.log('WebSocket disconnected');
     if (reconnectAttempts < maxReconnectAttempts) {
-      const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts) + Math.random() * 100; // Exponential backoff + jitter
+      const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts) + Math.random() * 100;
       console.log(`Reconnecting in ${delay/1000} seconds... (Attempt ${reconnectAttempts + 1})`);
       setTimeout(connectWebSocket, delay);
       reconnectAttempts++;
@@ -38,17 +53,15 @@ function connectWebSocket() {
 
   ws.onerror = (error) => {
     console.error('WebSocket error:', error);
-    ws.close(); // Trigger onclose for reconnection
+    ws.close();
   };
 }
 
 function sendPing() {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    console.log('Sending ping to server');
     ws.send(JSON.stringify({ type: 'ping' }));
   }
-  // Schedule next ping
-  setTimeout(sendPing, 30000); // Every 30 seconds
+  setTimeout(sendPing, 30000);
 }
 
 function showPopup(saleData) {
@@ -65,13 +78,11 @@ function showPopup(saleData) {
   });
 }
 
-// Create an alarm to keep service worker alive
-chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 }); // Every 30 seconds
+chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'keepAlive') {
     console.log('Alarm triggered: Keeping service worker alive');
-    // Check WebSocket state and reconnect if needed
     if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
       console.log('WebSocket not connected. Reconnecting...');
       connectWebSocket();
@@ -79,5 +90,4 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-// Initialize WebSocket connection
 connectWebSocket();
