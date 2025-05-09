@@ -2,47 +2,78 @@
 <html>
 <head>
   <title>Sale Notification</title>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400&family=Oswald:wght@500&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Work Sans', Arial, sans-serif;
       text-align: center;
+      margin: 0;
       padding: 20px;
-      background-color: #f0f0f0;
+      background-color: #f5f5f5;
+      color: #414141;
       overflow: hidden;
     }
     .container {
-      background-color: white;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1), 0 0 20px rgba(0,255,0,0.5);
-      animation: shake 0.5s ease-in-out;
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 25px;
+      max-width: 90%;
+      margin: 0 auto;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      animation: fadeIn 0.5s ease-in-out;
     }
     h1 {
-      color: #2e7d32;
-      font-size: 24px;
+      font-family: 'Oswald', sans-serif;
+      color: #f16222;
+      font-size: 28px;
+      margin-bottom: 15px;
     }
     p {
       font-size: 16px;
+      line-height: 1.5;
       margin: 10px 0;
     }
-    .close-btn {
+    .highlight {
+      background-color: #f16222;
+      color: #ffffff;
+      padding: 5px 10px;
+      border-radius: 5px;
+      display: inline-block;
+    }
+    .error {
+      color: #d32f2f;
+      font-weight: bold;
+    }
+    .close-btn, .submit-btn, .toggle-btn {
       margin-top: 20px;
       padding: 10px 20px;
-      background-color: #1976d2;
-      color: white;
+      background-color: #f16222;
+      color: #ffffff;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       cursor: pointer;
+      font-family: 'Work Sans', sans-serif;
+      font-size: 14px;
+      transition: background-color 0.3s;
     }
-    .close-btn:hover {
-      background-color: #1565c0;
+    .close-btn:hover, .submit-btn:hover, .toggle-btn:hover {
+      background-color: #d14e1c;
     }
-    /* Confetti animation */
+    input[type="email"], input[type="text"] {
+      padding: 10px;
+      margin: 10px 0;
+      width: 80%;
+      max-width: 300px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-family: 'Work Sans', sans-serif;
+      font-size: 14px;
+    }
     .confetti {
       position: absolute;
       width: 10px;
       height: 10px;
-      background: #f00;
+      background: #f16222;
       opacity: 0.8;
       animation: fall 3s linear infinite;
     }
@@ -50,18 +81,26 @@
       0% { transform: translateY(-100vh) rotate(0deg); opacity: 0.8; }
       100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
     }
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      75% { transform: translateX(5px); }
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: translateY(-20px); }
+      100% { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>New Sale!</h1>
+    <h1 id="title">New Sale!</h1>
     <p id="message"></p>
-    <button class="close-btn" id="closeButton">Close</button>
+    <div id="authForm" style="display: none;">
+      <p id="authMessage">Enter your @codingninjas.com email:</p>
+      <input type="email" id="emailInput" placeholder="yourname@codingninjas.com">
+      <input type="text" id="otpInput" placeholder="Enter OTP" style="display: none;">
+      <button class="submit-btn" id="submitButton">Submit</button>
+    </div>
+    <div id="sizeToggle" style="display: none;">
+      <button class="toggle-btn" id="toggleButton">Toggle Popup Size</button>
+    </div>
+    <button class="close-btn" id="closeButton" style="display: none;">Close</button>
   </div>
   <script src="popup.js"></script>
 </body>
