@@ -4,7 +4,8 @@
   "version": "1.0",
   "description": "Shows a custom popup when a sale is made.",
   "permissions": [
-    "alarms"
+    "alarms",
+    "storage"
   ],
   "background": {
     "service_worker": "background.js"
