@@ -9,106 +9,62 @@ document.addEventListener('DOMContentLoaded', () => {
   const title = document.getElementById('title');
   const message = document.getElementById('message');
   const authForm = document.getElementById('authForm');
-  const authMessage = document.getElementById('authMessage');
-  const emailInput = document.getElementById('emailInput');
-  const otpInput = document.getElementById('otpInput');
-  const submitButton = document.getElementById('submitButton');
   const closeButton = document.getElementById('closeButton');
-  const sizeToggle = document.getElementById('sizeToggle');
-  const toggleButton = document.getElementById('toggleButton');
+  const trophyContainer = document.querySelector('.trophy-container');
 
-  let email = '';
+  if (type === 'sale_made') {
+    title.textContent = 'New Enrolment!';
+    message.innerHTML = `<span class="bde-highlight">${bdeName}</span> sold ${product}! Congrats from ${managerName}!`;
+    trophyContainer.style.display = 'block'; // Show trophy for sale_made
+    createMoneyFall();
+  } else if (type === 'notification') {
+    title.textContent = 'Important Notification';
+    message.innerHTML = `<span class="highlight">${messageText}</span>`;
+    trophyContainer.style.display = 'none'; // Hide trophy for notification
+  } else if (type === 'private') {
+    title.textContent = 'Personal Notification';
+    message.innerHTML = `<span class="highlight">${messageText}</span>`;
+    trophyContainer.style.display = 'none'; // Hide trophy for private
+  } else {
+    console.error('Unknown popup type:', type);
+    return;
+  }
 
-  // Check authentication status
-  chrome.runtime.sendMessage({ action: 'checkAuth' }, (response) => {
-    if (response.isAuthenticated) {
-      title.textContent = type === 'sale_made' ? 'New Sale!' : 'Important Notification';
-      if (type === 'sale_made') {
-        message.textContent = `${bdeName} sold ${product}! Congrats from ${managerName}!`;
-        createConfetti();
-      } else if (type === 'notification') {
-        message.innerHTML = `<span class="highlight">${messageText}</span>`;
-      }
-      authForm.style.display = 'none';
-      closeButton.style.display = 'block';
-      sizeToggle.style.display = 'block';
-    } else {
-      title.textContent = 'Authentication Required';
-      message.textContent = '';
-      authForm.style.display = 'block';
-      closeButton.style.display = 'none';
-      sizeToggle.style.display = 'none';
-    }
-  });
-
-  // Handle submit button for OTP
-  submitButton.addEventListener('click', () => {
-    if (emailInput.style.display !== 'none') {
-      email = emailInput.value.trim();
-      if (!email.endsWith('@codingninjas.com')) {
-        message.textContent = 'Please use a @codingninjas.com email.';
-        message.className = 'error';
-        return;
-      }
-      chrome.runtime.sendMessage({ action: 'requestOTP', email }, (response) => {
-        if (response.error) {
-          message.textContent = response.error;
-          message.className = 'error';
-        } else {
-          authMessage.textContent = 'Enter the OTP sent to your email:';
-          emailInput.style.display = 'none';
-          otpInput.style.display = 'block';
-          submitButton.textContent = 'Verify OTP';
-          message.textContent = '';
-        }
-      });
-    } else {
-      const otp = otpInput.value.trim();
-      chrome.runtime.sendMessage({ action: 'verifyOTP', email, otp }, (response) => {
-        if (response.isAuthenticated) {
-          title.textContent = type === 'sale_made' ? 'New Sale!' : 'Important Notification';
-          if (type === 'sale_made') {
-            message.textContent = `${bdeName} sold ${product}! Congrats from ${managerName}!`;
-            createConfetti();
-          } else if (type === 'notification') {
-            message.innerHTML = `<span class="highlight">${messageText}</span>`;
-          }
-          message.className = '';
-          authForm.style.display = 'none';
-          closeButton.style.display = 'block';
-          sizeToggle.style.display = 'block';
-        } else {
-          message.textContent = response.error || 'Invalid or expired OTP.';
-          message.className = 'error';
-        }
-      });
-    }
-  });
-
-  // Handle popup size toggle
-  toggleButton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'getPopupSize' }, (response) => {
-      const newSize = response.size === 'full' ? 'small' : 'full';
-      chrome.runtime.sendMessage({ action: 'setPopupSize', size: newSize }, () => {
-        window.close();
-        showPopup({ type, bdeName, product, managerName, message: messageText });
-      });
-    });
-  });
+  authForm.style.display = 'none';
+  closeButton.style.display = 'block';
 
   closeButton.addEventListener('click', () => {
     window.close();
   });
 
-  function createConfetti() {
-    const colors = ['#f16222', '#f37421', '#f68d1e', '#f7981d'];
+  function createMoneyFall() {
+    // Clear existing elements
+    const existingElements = document.querySelectorAll('.money-coin, .money-usd, .firework');
+    existingElements.forEach(element => element.remove());
+
+    // Create new elements
     for (let i = 0; i < 50; i++) {
-      const confetti = document.createElement('div');
-      confetti.className = 'confetti';
-      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-      confetti.style.left = `${Math.random() * 100}vw`;
-      confetti.style.animationDelay = `${Math.random() * 2}s`;
-      document.body.appendChild(confetti);
+      // Golden coins
+      const coin = document.createElement('div');
+      coin.className = 'money-coin';
+      coin.style.left = `${Math.random() * 100}%`;
+      coin.style.animationDelay = `${Math.random() * 2}s`;
+      document.body.appendChild(coin);
+
+      // USD symbols
+      const usd = document.createElement('div');
+      usd.className = 'money-usd';
+      usd.textContent = '$';
+      usd.style.left = `${Math.random() * 100}%`;
+      usd.style.animationDelay = `${Math.random() * 2}s`;
+      document.body.appendChild(usd);
+
+      // Fireworks
+      const firework = document.createElement('div');
+      firework.className = 'firework';
+      firework.style.left = `${Math.random() * 100}%`;
+      firework.style.animationDelay = `${Math.random() * 2}s`;
+      document.body.appendChild(firework);
     }
   }
 });
