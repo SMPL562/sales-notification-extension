@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Extension Settings</title>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400&family=Oswald:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Work Sans', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+      color: #414141;
+      width: 300px;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .container {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      width: 100%;
+    }
+
+    h1 {
+      font-family: 'Oswald', sans-serif;
+      color: #f16222;
+      font-size: 24px;
+      margin-bottom: 15px;
+    }
+
+    p {
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 10px 0;
+    }
+
+    .error {
+      color: #d32f2f;
+      font-weight: bold;
+    }
+
+    .submit-btn, .toggle-btn {
+      margin-top: 15px;
+      padding: 8px 16px;
+      background-color: #f16222;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Work Sans', sans-serif;
+      font-size: 14px;
+      transition: background-color 0.3s;
+    }
+
+    .submit-btn:hover, .toggle-btn:hover {
+      background-color: #d14e1c;
+    }
+
+    input[type="email"], input[type="text"] {
+      padding: 10px;
+      margin: 10px 0;
+      width: 80%;
+      max-width: 200px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-family: 'Work Sans', sans-serif;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 id="title">Authenticate</h1>
+    <p id="message"></p>
+    <div id="authForm" style="display: none;">
+      <p id="authMessage">Enter your @codingninjas.com email:</p>
+      <input type="email" id="emailInput" placeholder="yourname@codingninjas.com">
+      <input type="text" id="otpInput" placeholder="Enter OTP" style="display: none;">
+      <button class="submit-btn" id="submitButton">Submit</button>
+    </div>
+    <div id="settingsForm" style="display: none;">
+      <p>Default Popup Size:</p>
+      <button class="toggle-btn" id="toggleButton">Toggle Size</button>
+    </div>
+  </div>
+  <script src="action.js"></script>
+</body>
+</html>
