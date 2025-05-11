@@ -5,10 +5,14 @@
   "description": "Shows a custom popup when a sale is made.",
   "permissions": [
     "alarms",
-    "storage"
+    "storage",
+    "system.display"
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "action.html"
   },
   "icons": {
     "48": "icon48.png",
