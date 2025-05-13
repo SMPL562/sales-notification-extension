@@ -19,10 +19,6 @@
     "alarms",
     "system.display"
   ],
-  "host_permissions": [
-    "https://sales-notification-backend.onrender.com/*",
-    "wss://sales-notification-backend.onrender.com/*"
-  ],
   "icons": {
     "48": "icon48.png",
     "128": "icon128.png"
