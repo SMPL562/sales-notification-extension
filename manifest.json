@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Sales Notification",
   "version": "1.0.2",
-  "description": "Internal tool for Coding Ninjas BDEs to receive real-time sales notifications with user-controlled popups. Requires @codingninjas.com email.",
+  "description": "Internal tool for Coding Ninjas BDEs to receive real-time sales notifications with user-controlled popups.",
   "author": "Coding Ninjas IT Team",
   "homepage_url": "https://codingninjas.com",
   "action": {
