@@ -17,8 +17,7 @@
   "permissions": [
     "storage",
     "alarms",
-    "system.display",
-    "action"
+    "system.display"
   ],
   "host_permissions": [
     "https://sales-notification-backend.onrender.com/*",
