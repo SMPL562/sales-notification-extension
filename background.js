@@ -6,6 +6,8 @@ const authExpiryDays = 30;
 const processedMessages = new Set();
 const FETCH_TIMEOUT = 30000; // 30 seconds
 let authWindowId = null;
+let lastPopupTime = 0;
+const POPUP_COOLDOWN = 30000; // 30 seconds cooldown between popups
 
 // Base64-encoded API URL components
 const API_BASE_URL_ENCODED = 'aHR0cHM6Ly9zYWxlcy1ub3RpZmljYXRpb24tYmFja2VuZC5vbnJlbmRlci5jb20=';
@@ -189,38 +191,59 @@ function sendPing() {
 }
 
 function showPopup(data) {
-  console.log('Showing popup for data:', data);
-  let url;
-  if (data.type === 'sale_made') {
-    const { bdeName, product, managerName } = data;
-    url = `popup.html?type=sale_made&bdeName=${encodeURIComponent(bdeName)}&product=${encodeURIComponent(product)}&managerName=${encodeURIComponent(managerName)}`;
-  } else if (data.type === 'notification') {
-    const { message } = data;
-    url = `popup.html?type=notification&message=${encodeURIComponent(message)}`;
-  } else if (data.type === 'private') {
-    const { message } = data;
-    url = `popup.html?type=private&message=${encodeURIComponent(message)}`;
-  } else {
-    console.error('Unknown payload type:', data.type);
-    return;
-  }
+  console.log('Checking to show popup for data:', data);
 
-  getScreenDimensions((dimensions) => {
-    chrome.storage.local.get(['popupSize'], (result) => {
-      let isFullWindow = true;
-      if (result.popupSize) {
-        isFullWindow = result.popupSize === 'full';
-      } else {
-        chrome.storage.local.set({ popupSize: 'full' });
-      }
-      chrome.windows.create({
-        url: chrome.runtime.getURL(url),
-        type: 'popup',
-        width: isFullWindow ? dimensions.width : 400,
-        height: isFullWindow ? dimensions.height : 300,
-        focused: true,
-        left: isFullWindow ? 0 : undefined,
-        top: isFullWindow ? 0 : undefined
+  // Check if popups are enabled
+  chrome.storage.local.get(['popupsEnabled'], (result) => {
+    const popupsEnabled = result.popupsEnabled !== undefined ? result.popupsEnabled : true;
+    if (!popupsEnabled) {
+      console.log('Popups are disabled by user. Skipping popup.');
+      return;
+    }
+
+    // Check cooldown period
+    const currentTime = Date.now();
+    if (currentTime - lastPopupTime < POPUP_COOLDOWN) {
+      console.log('Popup skipped due to cooldown period.');
+      return;
+    }
+
+    // Proceed to show popup
+    let url;
+    if (data.type === 'sale_made') {
+      const { bdeName, product, managerName } = data;
+      url = `popup.html?type=sale_made&bdeName=${encodeURIComponent(bdeName)}&product=${encodeURIComponent(product)}&managerName=${encodeURIComponent(managerName)}`;
+    } else if (data.type === 'notification') {
+      const { message } = data;
+      url = `popup.html?type=notification&message=${encodeURIComponent(message)}`;
+    } else if (data.type === 'private') {
+      const { message } = data;
+      url = `popup.html?type=private&message=${encodeURIComponent(message)}`;
+    } else {
+      console.error('Unknown payload type:', data.type);
+      return;
+    }
+
+    getScreenDimensions((dimensions) => {
+      chrome.storage.local.get(['popupSize'], (result) => {
+        let isFullWindow = true;
+        if (result.popupSize) {
+          isFullWindow = result.popupSize === 'full';
+        } else {
+          chrome.storage.local.set({ popupSize: 'full' });
+        }
+        chrome.windows.create({
+          url: chrome.runtime.getURL(url),
+          type: 'popup',
+          width: isFullWindow ? dimensions.width : 400,
+          height: isFullWindow ? dimensions.height : 300,
+          focused: true,
+          left: isFullWindow ? 0 : undefined,
+          top: isFullWindow ? 0 : undefined
+        }, () => {
+          lastPopupTime = Date.now();
+          console.log('Popup shown at:', new Date(lastPopupTime).toISOString());
+        });
       });
     });
   });
@@ -296,6 +319,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Use authToken if available, otherwise make the request without it (first-time OTP request)
     chrome.storage.local.get(['authToken'], (result) => {
       const token = result.authToken;
+      console.log('RequestOTP - authToken:', token); // Debug log
       const headers = {
         'Content-Type': 'application/json'
       };
@@ -335,48 +359,52 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
     const apiBaseUrl = getApiBaseUrl();
 
-    // Use authToken if available
-    chrome.storage.local.get(['authToken'], (result) => {
-      const token = result.authToken;
-      const headers = {
-        'Content-Type': 'application/json'
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+    // Clear authToken before the first verification attempt to ensure no stale token is sent
+    chrome.storage.local.remove(['authToken'], () => {
+      console.log('Cleared authToken before verifyOTP request');
+      chrome.storage.local.get(['authToken'], (result) => {
+        const token = result.authToken;
+        console.log('VerifyOTP - authToken:', token); // Debug log
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
 
-      fetch(`${apiBaseUrl}/verify-otp`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({ email: request.email, otp: request.otp }),
-        signal: controller.signal
-      })
-        .then(response => {
-          clearTimeout(timeoutId);
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}, StatusText: ${response.statusText}`);
-          }
-          return response.json();
+        fetch(`${apiBaseUrl}/verify-otp`, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({ email: request.email, otp: request.otp }),
+          signal: controller.signal
         })
-        .then(data => {
-          if (data.message === 'OTP verified successfully') {
-            setAuthentication(data.token, data.email, () => {
-              sendResponse({ isAuthenticated: true });
-              connectWebSocket();
-            });
-          } else {
-            sendResponse({ error: data.error });
-          }
-        })
-        .catch(error => {
-          clearTimeout(timeoutId);
-          console.error('Fetch error for verifyOTP:', error.message);
-          if (error.name === 'AbortError') {
-            sendResponse({ error: 'Request timed out. Please try again.' });
-          } else {
-            sendResponse({ error: error.message || 'Failed to verify OTP' });
-          }
-        });
+          .then(response => {
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}, StatusText: ${response.statusText}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            if (data.message === 'OTP verified successfully') {
+              setAuthentication(data.token, data.email, () => {
+                sendResponse({ isAuthenticated: true });
+                connectWebSocket();
+              });
+            } else {
+              sendResponse({ error: data.error });
+            }
+          })
+          .catch(error => {
+            clearTimeout(timeoutId);
+            console.error('Fetch error for verifyOTP:', error.message);
+            if (error.name === 'AbortError') {
+              sendResponse({ error: 'Request timed out. Please try again.' });
+            } else {
+              sendResponse({ error: error.message || 'Failed to verify OTP' });
+            }
+          });
+      });
     });
     return true;
   } else if (request.action === 'setPopupSize') {
