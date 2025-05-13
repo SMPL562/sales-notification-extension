@@ -1,19 +1,29 @@
 {
   "manifest_version": 3,
-  "name": "Sales Notification Extension",
-  "version": "1.0",
-  "description": "Shows a custom popup when a sale is made.",
-  "permissions": [
-    "alarms",
-    "storage",
-    "system.display"
-  ],
+  "name": "Sales Notification",
+  "version": "1.0.2",
+  "description": "Internal tool for Coding Ninjas BDEs to receive real-time sales notifications with user-controlled popups. Requires @codingninjas.com email.",
+  "author": "Coding Ninjas IT Team",
+  "homepage_url": "https://codingninjas.com",
+  "action": {
+    "default_icon": {
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
   "background": {
     "service_worker": "background.js"
   },
-  "action": {
-    "default_popup": "action.html"
-  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "system.display",
+    "action"
+  ],
+  "host_permissions": [
+    "https://sales-notification-backend.onrender.com/*",
+    "wss://sales-notification-backend.onrender.com/*"
+  ],
   "icons": {
     "48": "icon48.png",
     "128": "icon128.png"
