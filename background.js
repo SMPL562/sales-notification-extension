@@ -127,6 +127,8 @@ function connectWebSocket() {
         console.log('WebSocket connected successfully');
         reconnectAttempts = 0;
         sendPing();
+        // Request any queued notifications on connection
+        requestNextNotification();
       };
 
       ws.onmessage = (event) => {
@@ -134,6 +136,13 @@ function connectWebSocket() {
         console.log('WebSocket message received:', data);
         if (data.type === 'pong') {
           console.log('Received pong from server');
+        } else if (data.type === 'wait') {
+          // Server indicates client is still in cooldown
+          const remaining = data.remaining;
+          console.log(`Server in cooldown, waiting ${remaining}ms before requesting next notification`);
+          setTimeout(requestNextNotification, remaining);
+        } else if (data.type === 'noNotifications') {
+          console.log('No more notifications in queue');
         } else {
           if (data.messageId && processedMessages.has(data.messageId)) {
             console.log('Duplicate message ignored:', data.messageId);
@@ -190,6 +199,13 @@ function sendPing() {
   setTimeout(sendPing, 30000);
 }
 
+function requestNextNotification() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'requestNextNotification' }));
+    console.log('Requested next notification from server');
+  }
+}
+
 function showPopup(data) {
   console.log('Checking to show popup for data:', data);
 
@@ -198,13 +214,8 @@ function showPopup(data) {
     const popupsEnabled = result.popupsEnabled !== undefined ? result.popupsEnabled : true;
     if (!popupsEnabled) {
       console.log('Popups are disabled by user. Skipping popup.');
-      return;
-    }
-
-    // Check cooldown period
-    const currentTime = Date.now();
-    if (currentTime - lastPopupTime < POPUP_COOLDOWN) {
-      console.log('Popup skipped due to cooldown period.');
+      // Even if popups are disabled, request the next notification after cooldown
+      setTimeout(requestNextNotification, POPUP_COOLDOWN);
       return;
     }
 
@@ -243,6 +254,8 @@ function showPopup(data) {
         }, () => {
           lastPopupTime = Date.now();
           console.log('Popup shown at:', new Date(lastPopupTime).toISOString());
+          // Request the next notification after the cooldown period
+          setTimeout(requestNextNotification, POPUP_COOLDOWN);
         });
       });
     });
