@@ -87,39 +87,6 @@
       100% { opacity: 0; display: none; }
     }
 
-    .character-container {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 4;
-      animation: fadeOutCharacter 3s ease-in-out forwards;
-    }
-
-    .ninja {
-      width: 150px;
-      height: 150px;
-      opacity: 0;
-      animation: assembleNinja 2s ease-out forwards;
-    }
-
-    @keyframes assembleNinja {
-      0% { opacity: 0; transform: scale(0) rotate(0deg); }
-      50% { opacity: 1; transform: scale(1.2) rotate(360deg); }
-      70% { transform: scale(1) rotate(360deg); }
-      100% { transform: scale(1) rotate(360deg) translateY(-20px); }
-    }
-
-    @keyframes fadeOutCharacter {
-      0% { opacity: 1; }
-      80% { opacity: 1; }
-      100% { opacity: 0; display: none; }
-    }
-
     .container {
       position: relative;
       z-index: 2;
@@ -131,7 +98,7 @@
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
       border: 2px solid #ffd700;
       opacity: 0;
-      animation: revealContent 1s ease-out 3s forwards;
+      animation: revealContent 1s ease-out 0.5s forwards;
     }
 
     @keyframes revealContent {
@@ -356,13 +323,6 @@
       <div class="orbit-dot"></div>
       <div class="orbit-dot"></div>
     </div>
-  </div>
-  <div class="character-container">
-    <svg class="ninja" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#f16222" d="M12 2a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.17A3.001 3.001 0 0 1 14 16v4a2 2 0 0 1-2 2a2 2 0 0 1-2-2v-4a3.001 3.001 0 0 1-1.17-2.83H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2V4a2 2 0 0 1 2-2z"/>
-      <path fill="#ffffff" d="M10 8h4v2h-4z" opacity="0.8"/>
-      <circle cx="12" cy="5" r="1" fill="#ffffff"/>
-    </svg>
   </div>
   <div class="container">
     <div class="frame"></div>
