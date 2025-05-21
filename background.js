@@ -8,6 +8,7 @@ const FETCH_TIMEOUT = 30000; // 30 seconds
 let authWindowId = null;
 let lastPopupTime = 0;
 const POPUP_COOLDOWN = 30000; // 30 seconds cooldown between popups
+let pingTimer = null; // Timer for pinging
 
 // Base64-encoded API URL components
 const API_BASE_URL_ENCODED = 'aHR0cHM6Ly9zYWxlcy1ub3RpZmljYXRpb24tYmFja2VuZC5vbnJlbmRlci5jb20=';
@@ -48,7 +49,8 @@ function setAuthentication(token, email, callback) {
   chrome.storage.local.set({
     authToken: token,
     authTimestamp: Date.now(),
-    userEmail: email
+    userEmail: email,
+    wsConnectionActive: false // Reset connection flag on new authentication
   }, () => {
     console.log('Authentication set for:', { token, email });
     callback(true);
@@ -61,9 +63,13 @@ function setAuthentication(token, email, callback) {
 }
 
 function clearAuthentication(callback) {
-  chrome.storage.local.remove(['authToken', 'authTimestamp', 'userEmail'], () => {
+  chrome.storage.local.remove(['authToken', 'authTimestamp', 'userEmail', 'wsConnectionActive'], () => {
     console.log('Authentication cleared');
     callback();
+    if (pingTimer) {
+      clearTimeout(pingTimer);
+      pingTimer = null;
+    }
   });
 }
 
@@ -112,10 +118,17 @@ function connectWebSocket() {
       return;
     }
 
-    chrome.storage.local.get(['authToken'], (result) => {
+    chrome.storage.local.get(['authToken', 'wsConnectionActive'], (result) => {
       const token = result.authToken;
+      const wsConnectionActive = result.wsConnectionActive || false;
+
       if (!token) {
         console.log('No auth token available for WebSocket connection.');
+        return;
+      }
+
+      if (wsConnectionActive) {
+        console.log('WebSocket connection already active for this token. Skipping connection attempt.');
         return;
       }
 
@@ -123,11 +136,15 @@ function connectWebSocket() {
       console.log('Attempting to connect WebSocket...');
       ws = new WebSocket(`wss://${apiBaseUrl.replace('https://', '')}/ws?token=${token}`);
 
+      // Set the connection active flag
+      chrome.storage.local.set({ wsConnectionActive: true }, () => {
+        console.log('Set wsConnectionActive to true');
+      });
+
       ws.onopen = () => {
         console.log('WebSocket connected successfully');
         reconnectAttempts = 0;
-        sendPing();
-        // Request any queued notifications on connection
+        startPing();
         requestNextNotification();
       };
 
@@ -137,7 +154,6 @@ function connectWebSocket() {
         if (data.type === 'pong') {
           console.log('Received pong from server');
         } else if (data.type === 'wait') {
-          // Server indicates client is still in cooldown
           const remaining = data.remaining;
           console.log(`Server in cooldown, waiting ${remaining}ms before requesting next notification`);
           setTimeout(requestNextNotification, remaining);
@@ -172,8 +188,26 @@ function connectWebSocket() {
         }
       };
 
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected with code:', event.code);
+        // Clear the connection active flag
+        chrome.storage.local.set({ wsConnectionActive: false }, () => {
+          console.log('Set wsConnectionActive to false');
+        });
+
+        // Stop the ping timer
+        if (pingTimer) {
+          clearTimeout(pingTimer);
+          pingTimer = null;
+        }
+
+        // Avoid reconnecting if the server rejected the connection due to rate limiting
+        if (event.code === 1008) { // 1008: Connection attempt too soon or too many connections
+          console.log('Connection rejected by server (rate limit or too many connections). Not retrying immediately.');
+          setTimeout(connectWebSocket, baseReconnectDelay); // Wait before retrying
+          return;
+        }
+
         if (reconnectAttempts < maxReconnectAttempts) {
           const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts) + Math.random() * 100;
           console.log(`Reconnecting in ${delay/1000} seconds... (Attempt ${reconnectAttempts + 1})`);
@@ -192,11 +226,20 @@ function connectWebSocket() {
   });
 }
 
-function sendPing() {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'ping' }));
+function startPing() {
+  // Stop any existing ping timer
+  if (pingTimer) {
+    clearTimeout(pingTimer);
+    pingTimer = null;
   }
-  setTimeout(sendPing, 30000);
+
+  // Start a new ping cycle
+  pingTimer = setTimeout(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }));
+    }
+    startPing(); // Schedule the next ping
+  }, 30000); // Ping every 30 seconds
 }
 
 function requestNextNotification() {
@@ -209,17 +252,14 @@ function requestNextNotification() {
 function showPopup(data) {
   console.log('Checking to show popup for data:', data);
 
-  // Check if popups are enabled
   chrome.storage.local.get(['popupsEnabled'], (result) => {
     const popupsEnabled = result.popupsEnabled !== undefined ? result.popupsEnabled : true;
     if (!popupsEnabled) {
       console.log('Popups are disabled by user. Skipping popup.');
-      // Even if popups are disabled, request the next notification after cooldown
       setTimeout(requestNextNotification, POPUP_COOLDOWN);
       return;
     }
 
-    // Proceed to show popup
     let url;
     if (data.type === 'sale_made') {
       const { bdeName, product, managerName } = data;
@@ -254,7 +294,6 @@ function showPopup(data) {
         }, () => {
           lastPopupTime = Date.now();
           console.log('Popup shown at:', new Date(lastPopupTime).toISOString());
-          // Request the next notification after the cooldown period
           setTimeout(requestNextNotification, POPUP_COOLDOWN);
         });
       });
@@ -266,12 +305,10 @@ function showPopup(data) {
 chrome.action.onClicked.addListener(() => {
   checkAuthentication((isAuthenticated) => {
     if (!isAuthenticated) {
-      // Prevent the default popup from opening
       chrome.action.setPopup({ popup: '' }, () => {
         showAuthPopup();
       });
     } else {
-      // Allow the default popup to open for authenticated users
       chrome.action.setPopup({ popup: 'action.html' });
     }
   });
@@ -329,10 +366,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
     const apiBaseUrl = getApiBaseUrl();
 
-    // Use authToken if available, otherwise make the request without it (first-time OTP request)
     chrome.storage.local.get(['authToken'], (result) => {
       const token = result.authToken;
-      console.log('RequestOTP - authToken:', token); // Debug log
+      console.log('RequestOTP - authToken:', token);
       const headers = {
         'Content-Type': 'application/json'
       };
@@ -372,12 +408,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
     const apiBaseUrl = getApiBaseUrl();
 
-    // Clear authToken before the first verification attempt to ensure no stale token is sent
     chrome.storage.local.remove(['authToken'], () => {
       console.log('Cleared authToken before verifyOTP request');
       chrome.storage.local.get(['authToken'], (result) => {
         const token = result.authToken;
-        console.log('VerifyOTP - authToken:', token); // Debug log
+        console.log('VerifyOTP - authToken:', token);
         const headers = {
           'Content-Type': 'application/json'
         };
