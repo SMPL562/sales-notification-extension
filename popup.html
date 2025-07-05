@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sales Notification</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -101,6 +103,7 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       opacity: 0;
       animation: slideIn 0.8s ease-out 2.5s forwards;
+      cursor: default; /* FIXED: Prevent text cursor on container */
     }
 
     @keyframes slideIn {
@@ -190,7 +193,7 @@
       animation: pulse 2s ease-in-out infinite;
     }
 
-    .bde-highlight {
+       .bde-highlight {
       background: linear-gradient(45deg, #ffd700, #ffed4e);
       color: #333;
       padding: 8px 16px;
@@ -234,6 +237,7 @@
       transition: all 0.3s ease;
       text-transform: uppercase;
       letter-spacing: 1px;
+      user-select: none; /* FIXED: Prevent text selection on buttons */
     }
 
     .btn-primary {
@@ -342,6 +346,13 @@
         transition-duration: 0.01ms !important;
       }
     }
+
+    /* FIXED: Prevent weird character display */
+    .container * {
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
   </style>
 </head>
 <body>
@@ -368,10 +379,10 @@
     </div>
 
     <div class="controls">
-      <button class="btn btn-primary" id="closeButton">
+      <button class="btn btn-primary" id="closeButton" type="button">
         <i class="fas fa-times"></i> Close
       </button>
-      <button class="btn btn-secondary" id="settingsButton">
+      <button class="btn btn-secondary" id="settingsButton" type="button">
         <i class="fas fa-cog"></i> Settings
       </button>
     </div>
