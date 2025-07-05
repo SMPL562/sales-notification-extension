@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Sale Notification</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+  <title>Sales Notification</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <style>
-    body {
-      font-family: 'Poppins', sans-serif;
+    * {
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
       color: #fff;
-      background: linear-gradient(135deg, #1e3a8a, #f97316);
-      overflow-x: hidden;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      overflow: hidden;
       height: 100vh;
       display: flex;
       justify-content: center;
@@ -25,12 +29,12 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, #1e3a8a, #f97316);
+      background: inherit;
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 5;
-      animation: fadeOut 0.75s ease-in-out forwards;
+      z-index: 1000;
+      animation: fadeOut 1s ease-in-out 2s forwards;
     }
 
     .orbit-loader {
@@ -43,32 +47,31 @@
       position: absolute;
       width: 100%;
       height: 100%;
-      border: 2px dashed #f16222;
+      border: 2px dashed rgba(255, 255, 255, 0.3);
       border-radius: 50%;
-      opacity: 0.3;
-      animation: rotate 0.5s linear infinite;
+      animation: rotate 2s linear infinite;
     }
 
     .orbit-dot {
       position: absolute;
       width: 12px;
       height: 12px;
-      background: #f16222;
+      background: #fff;
       border-radius: 50%;
       top: 50%;
       left: 50%;
       transform-origin: 0 40px;
-      animation: orbit 0.25s linear infinite;
+      animation: orbit 1s linear infinite;
     }
 
     .orbit-dot:nth-child(2) {
-      animation-delay: 0.05s;
+      animation-delay: 0.33s;
       background: #ffd700;
     }
 
     .orbit-dot:nth-child(3) {
-      animation-delay: 0.1s;
-      background: #ffffff;
+      animation-delay: 0.66s;
+      background: #f16222;
     }
 
     @keyframes rotate {
@@ -83,126 +86,119 @@
 
     @keyframes fadeOut {
       0% { opacity: 1; }
-      80% { opacity: 1; }
-      100% { opacity: 0; display: none; }
+      100% { opacity: 0; pointer-events: none; }
     }
 
     .container {
       position: relative;
-      z-index: 2;
       text-align: center;
-      background: rgba(0, 0, 0, 0.7);
-      border-radius: 16px;
-      padding: 30px;
-      max-width: 90%;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-      border: 2px solid #ffd700;
-      opacity: 0;
-      animation: revealContent 1s ease-out 0.5s forwards;
-    }
-
-    @keyframes revealContent {
-      0% { opacity: 0; transform: scale(0.95); }
-      100% { opacity: 1; transform: scale(1); }
-    }
-
-    .frame {
-      position: absolute;
-      top: -10px;
-      left: -10px;
-      right: -10px;
-      bottom: -10px;
-      border: 3px solid #ffd700;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
       border-radius: 20px;
-      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
-      z-index: -1;
-      animation: frameGlow 2s ease-in-out infinite;
+      padding: 40px;
+      max-width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      opacity: 0;
+      animation: slideIn 0.8s ease-out 2.5s forwards;
     }
 
-    @keyframes frameGlow {
-      0% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
-      50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.8); }
-      100% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
+    @keyframes slideIn {
+      0% { 
+        opacity: 0; 
+        transform: translateY(30px) scale(0.9); 
+      }
+      100% { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+      }
+    }
+
+    .notification-icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: bounceIn 0.6s ease-out 3s forwards;
+    }
+
+    @keyframes bounceIn {
+      0% { 
+        opacity: 0; 
+        transform: scale(0.3); 
+      }
+      50% { 
+        opacity: 1; 
+        transform: scale(1.1); 
+      }
+      70% { 
+        transform: scale(0.9); 
+      }
+      100% { 
+        opacity: 1; 
+        transform: scale(1); 
+      }
+    }
+
+    .sale-icon {
+      color: #ffd700;
+    }
+
+    .notification-icon-general {
+      color: #64b5f6;
+    }
+
+    .private-icon {
+      color: #81c784;
     }
 
     h1 {
-      font-family: 'Poppins', sans-serif;
       font-weight: 700;
-      color: #ffd700;
-      font-size: 40px;
-      margin-bottom: 20px;
-      text-transform: uppercase;
-      letter-spacing: 3px;
-      animation: textGlow 2s ease-in-out infinite, fadeInText 1.5s ease-out forwards;
+      font-size: 36px;
+      margin-bottom: 25px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      animation: fadeInUp 0.6s ease-out 3.2s forwards;
     }
 
-    @keyframes textGlow {
-      0% { text-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
-      50% { text-shadow: 0 0 15px rgba(255, 215, 0, 0.8); }
-      100% { text-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+    @keyframes fadeInUp {
+      0% { 
+        opacity: 0; 
+        transform: translateY(20px); 
+      }
+      100% { 
+        opacity: 1; 
+        transform: translateY(0); 
+      }
     }
 
-    @keyframes fadeInText {
-      0% { opacity: 0; transform: translateY(20px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-
-    p {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 400;
-      font-size: 20px;
-      line-height: 1.5;
-      margin: 10px 0;
-      color: #e0e0e0;
-      animation: bounceInText 1s ease-out 0.5s forwards;
-    }
-
-    @keyframes bounceInText {
-      0% { opacity: 0; transform: scale(0.8); }
-      60% { opacity: 1; transform: scale(1.05); }
-      100% { transform: scale(1); }
+    .message {
+      font-size: 18px;
+      line-height: 1.6;
+      margin: 25px 0;
+      opacity: 0;
+      animation: fadeInUp 0.6s ease-out 3.4s forwards;
     }
 
     .highlight {
-      background-color: #f16222;
-      color: #ffffff;
-      padding: 5px 10px;
-      border-radius: 5px;
+      background: linear-gradient(45deg, #f16222, #ff8a50);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 25px;
       display: inline-block;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(241, 98, 34, 0.3);
+      animation: pulse 2s ease-in-out infinite;
     }
 
     .bde-highlight {
-      color: #ffd700;
-      font-weight: bold;
-      text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
-      animation: wave 1s ease-in-out infinite;
-    }
-
-    @keyframes wave {
-      0% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
-      100% { transform: translateY(0); }
-    }
-
-    .error {
-      color: #d32f2f;
-      font-weight: bold;
-    }
-
-    .close-btn {
-      margin: 20px auto 0;
-      padding: 12px 24px;
-      background-color: #f16222;
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-family: 'Poppins', sans-serif;
-      font-size: 16px;
-      font-weight: 500;
-      transition: background-color 0.3s, box-shadow 0.3s;
-      display: block;
-      animation: pulse 2s ease-in-out infinite;
+      background: linear-gradient(45deg, #ffd700, #ffed4e);
+      color: #333;
+      padding: 8px 16px;
+      border-radius: 25px;
+      display: inline-block;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+      animation: glow 2s ease-in-out infinite;
     }
 
     @keyframes pulse {
@@ -211,107 +207,140 @@
       100% { transform: scale(1); }
     }
 
-    .close-btn:hover {
-      background-color: #d14e1c;
-      box-shadow: 0 0 15px rgba(241, 98, 34, 0.8);
+    @keyframes glow {
+      0% { box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3); }
+      50% { box-shadow: 0 4px 25px rgba(255, 215, 0, 0.6); }
+      100% { box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3); }
     }
 
-    input[type="email"], input[type="text"] {
-      padding: 10px;
-      margin: 10px 0;
-      width: 80%;
-      max-width: 300px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+    .controls {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      opacity: 0;
+      animation: fadeInUp 0.6s ease-out 3.6s forwards;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 25px;
       font-family: 'Poppins', sans-serif;
       font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
-    .trophy-container {
-      position: relative;
-      margin: 20px auto;
-      width: 100px;
-      height: 100px;
-      z-index: 3;
-      line-height: 100px;
-      text-align: center;
-      display: none; /* Hide by default */
+    .btn-primary {
+      background: linear-gradient(45deg, #f16222, #ff8a50);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(241, 98, 34, 0.3);
     }
 
-    .trophy {
-      font-size: 80px;
-      color: #ffd700;
-      opacity: 0;
-      display: inline-block;
-      vertical-align: middle;
-      font-family: "Font Awesome 6 Free";
-      font-weight: 900;
-      animation: bounceIn 1s ease-out 1s forwards;
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(241, 98, 34, 0.4);
     }
 
-    @keyframes bounceIn {
-      0% { opacity: 0; transform: scale(0.3); }
-      50% { opacity: 1; transform: scale(1.1); }
-      70% { transform: scale(0.9); }
-      100% { opacity: 1; transform: scale(1); }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
     }
 
-    .sparkle {
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    /* Celebration Effects */
+    .celebration {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .confetti {
       position: absolute;
       width: 8px;
       height: 8px;
       background: #ffd700;
-      border-radius: 50%;
-      opacity: 0;
-      animation: sparkle 2s linear infinite;
-      z-index: 3;
+      animation: confetti-fall 3s linear infinite;
     }
 
-    @keyframes sparkle {
-      0% { opacity: 0; transform: scale(0); }
-      50% { opacity: 1; transform: scale(1); }
-      100% { opacity: 0; transform: scale(0); }
+    .confetti:nth-child(odd) {
+      background: #f16222;
+      animation-delay: 0.5s;
     }
 
-    .money-coin, .money-usd, .firework {
-      position: absolute;
-      opacity: 0.8;
-      animation: fallMoney 3s linear infinite;
-      z-index: 1;
+    .confetti:nth-child(3n) {
+      background: #64b5f6;
+      animation-delay: 1s;
     }
 
-    .money-coin {
-      width: 20px;
-      height: 20px;
-      background: radial-gradient(circle at 30% 30%, #ffeb3b, #d4af37 50%, #b8860b);
-      border-radius: 50%;
-      box-shadow: 0 0 5px rgba(255, 215, 0, 0.5), inset 2px 2px 5px rgba(0, 0, 0, 0.3);
+    @keyframes confetti-fall {
+      0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+      }
     }
 
-    .money-usd {
-      font-size: 20px;
-      color: #c0c0c0;
-      text-shadow: 0 0 5px #2e7d32, 1px 1px 2px rgba(0, 0, 0, 0.5);
+    /* Responsive Design */
+    @media (max-width: 600px) {
+      .container {
+        padding: 25px;
+        margin: 20px;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .message {
+        font-size: 16px;
+      }
+
+      .notification-icon {
+        font-size: 50px;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .btn {
+        width: 100%;
+        max-width: 200px;
+      }
     }
 
-    .firework {
-      width: 10px;
-      height: 10px;
-      background: #ffd700;
-      border-radius: 50%;
-      opacity: 0;
-      animation: fallMoney 3s linear infinite, fireworkScale 2s ease-out infinite;
+    /* Accessibility */
+    .btn:focus {
+      outline: 2px solid #fff;
+      outline-offset: 2px;
     }
 
-    @keyframes fireworkScale {
-      0% { opacity: 0; transform: scale(0); }
-      50% { opacity: 1; transform: scale(2); }
-      100% { opacity: 0; transform: scale(0); }
-    }
-
-    @keyframes fallMoney {
-      0% { transform: translateY(-100vh) rotate(0deg); opacity: 0.8; }
-      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 </head>
@@ -324,24 +353,30 @@
       <div class="orbit-dot"></div>
     </div>
   </div>
+
+  <div class="celebration" id="celebration"></div>
+
   <div class="container">
-    <div class="frame"></div>
-    <h1 id="title">New Sale!</h1>
-    <p id="message"></p>
-    <div class="trophy-container">
-      <i class="trophy fa-solid fa-trophy"></i>
-      <div class="sparkle" style="top: 10px; left: 10px; animation-delay: 0s;"></div>
-      <div class="sparkle" style="top: 80px; left: 70px; animation-delay: 0.5s;"></div>
-      <div class="sparkle" style="top: 20px; left: 80px; animation-delay: 1s;"></div>
+    <div class="notification-icon" id="notificationIcon">
+      <i class="fas fa-bell"></i>
     </div>
-    <div id="authForm" style="display: none;">
-      <p id="authMessage">Enter your @codingninjas.com email:</p>
-      <input type="email" id="emailInput" placeholder="yourname@codingninjas.com">
-      <input type="text" id="otpInput" placeholder="Enter OTP" style="display: none;">
-      <button class="submit-btn" id="submitButton">Submit</button>
+    
+    <h1 id="title">New Notification!</h1>
+    
+    <div class="message" id="message">
+      Loading notification...
     </div>
-    <button class="close-btn" id="closeButton" style="display: none;">Close</button>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="closeButton">
+        <i class="fas fa-times"></i> Close
+      </button>
+      <button class="btn btn-secondary" id="settingsButton">
+        <i class="fas fa-cog"></i> Settings
+      </button>
+    </div>
   </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
