@@ -212,22 +212,25 @@ class ExtensionManager {
   }
 
   setAuthentication(token, email, callback) {
-    chrome.storage.local.set({
-      authToken: token,
-      authTimestamp: Date.now(),
-      userEmail: email,
-      wsConnectionActive: false,
-      popupsEnabled: true
-    }, () => {
-      console.log('Authentication set for:', email);
-      callback(true);
-      if (this.authWindowId !== null) {
-        chrome.windows.remove(this.authWindowId, () => {
-          this.authWindowId = null;
-        });
-      }
-    });
-  }
+  chrome.storage.local.set({
+    authToken: token,
+    authTimestamp: Date.now(),
+    userEmail: email,
+    wsConnectionActive: false,
+    popupsEnabled: true
+  }, () => {
+    console.log('Authentication set for:', email);
+    callback(true);
+    
+    // Close auth window if it exists
+    if (this.authWindowId !== null) {
+      chrome.windows.remove(this.authWindowId, (result) => {
+        console.log('Auth window closed after authentication');
+        this.authWindowId = null;
+      });
+    }
+  });
+}
 
   clearAuthentication(callback) {
     chrome.storage.local.remove(['authToken', 'authTimestamp', 'userEmail', 'wsConnectionActive'], () => {
@@ -250,35 +253,58 @@ class ExtensionManager {
   }
 
   showAuthPopup() {
-    if (this.authWindowId !== null) {
-      chrome.windows.get(this.authWindowId, (window) => {
-        if (!chrome.runtime.lastError && window) {
-          chrome.windows.update(this.authWindowId, { focused: true });
-        } else {
-          this.createAuthWindow();
+  // Prevent multiple auth windows
+  if (this.authWindowId !== null) {
+    chrome.windows.get(this.authWindowId, (window) => {
+      if (!chrome.runtime.lastError && window) {
+        console.log('Auth window already exists, focusing it');
+        chrome.windows.update(this.authWindowId, { focused: true });
+        return;
+      } else {
+        // Window doesn't exist anymore, reset the ID
+        this.authWindowId = null;
+        this.createAuthWindow();
+      }
+    });
+  } else {
+    this.createAuthWindow();
+  }
+}
+
+createAuthWindow() {
+  // Double-check we don't already have a window
+  if (this.authWindowId !== null) {
+    console.log('Auth window creation skipped - window already exists');
+    return;
+  }
+
+  this.getScreenDimensions((dimensions) => {
+    chrome.windows.create({
+      url: chrome.runtime.getURL('action.html'),
+      type: 'popup',
+      width: Math.min(400, dimensions.width),
+      height: Math.min(600, dimensions.height),
+      focused: true,
+      left: Math.floor((dimensions.width - 400) / 2),
+      top: Math.floor((dimensions.height - 600) / 2)
+    }, (window) => {
+      if (chrome.runtime.lastError) {
+        console.error('Error creating auth window:', chrome.runtime.lastError);
+        return;
+      }
+      this.authWindowId = window.id;
+      console.log('Auth window created with ID:', window.id);
+      
+      // Listen for window close
+      chrome.windows.onRemoved.addListener((windowId) => {
+        if (windowId === this.authWindowId) {
+          console.log('Auth window closed');
+          this.authWindowId = null;
         }
       });
-    } else {
-      this.createAuthWindow();
-    }
-  }
-
-  createAuthWindow() {
-    this.getScreenDimensions((dimensions) => {
-      chrome.windows.create({
-        url: chrome.runtime.getURL('action.html'),
-        type: 'popup',
-        width: Math.min(400, dimensions.width),
-        height: Math.min(600, dimensions.height),
-        focused: true,
-        left: Math.floor((dimensions.width - 400) / 2),
-        top: Math.floor((dimensions.height - 600) / 2)
-      }, (window) => {
-        this.authWindowId = window.id;
-      });
     });
-  }
-
+  });
+}
   connectWebSocket() {
     if (this.isConnecting) {
       console.log('Already connecting, skipping...');
