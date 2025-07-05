@@ -1,10 +1,9 @@
-// Enhanced background service worker with better memory management
 class ExtensionManager {
   constructor() {
     this.ws = null;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 10;
-    this.baseReconnectDelay = 5000;
+    this.maxReconnectAttempts = 5; // Reduced from 10
+    this.baseReconnectDelay = 10000; // Increased from 5000 to 10000
     this.authExpiryDays = 30;
     this.processedMessages = new Set();
     this.FETCH_TIMEOUT = 30000;
@@ -14,6 +13,7 @@ class ExtensionManager {
     this.pingTimer = null;
     this.keepAliveTimer = null;
     this.connectionRetryTimer = null;
+    this.isConnecting = false; // Add connection state flag
     
     this.init();
   }
@@ -47,20 +47,22 @@ class ExtensionManager {
   }
 
   setupKeepAlive() {
-    chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
+    chrome.alarms.create('keepAlive', { periodInMinutes: 1 }); // Reduced frequency
     chrome.alarms.create('authPrompt', { periodInMinutes: 60 });
     
     this.keepAliveTimer = setInterval(() => {
       this.checkConnection();
-    }, 30000);
+    }, 60000); // Reduced frequency to 1 minute
   }
 
   checkConnection() {
     this.checkAuthentication((isAuthenticated) => {
       if (isAuthenticated) {
         if (!this.ws || this.ws.readyState === WebSocket.CLOSED || this.ws.readyState === WebSocket.CLOSING) {
-          console.log('WebSocket not connected. Reconnecting...');
-          this.connectWebSocket();
+          if (!this.isConnecting) {
+            console.log('WebSocket not connected. Reconnecting...');
+            this.connectWebSocket();
+          }
         } else if (this.ws.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify({ type: 'keepAlive' }));
         }
@@ -73,7 +75,9 @@ class ExtensionManager {
       if (!isAuthenticated) {
         this.showAuthPopup();
       } else {
-        this.connectWebSocket();
+        setTimeout(() => {
+          this.connectWebSocket();
+        }, 2000); // Delay initial connection
       }
     });
   }
@@ -108,12 +112,14 @@ class ExtensionManager {
       if (!isAuthenticated) {
         this.showAuthPopup();
       } else {
-        this.connectWebSocket();
+        setTimeout(() => {
+          this.connectWebSocket();
+        }, 3000); // Delay startup connection
       }
     });
   }
 
-    handleAlarm(alarm) {
+  handleAlarm(alarm) {
     if (alarm.name === 'authPrompt') {
       console.log('Auth prompt alarm triggered');
       this.checkAuthentication((isAuthenticated) => {
@@ -235,6 +241,11 @@ class ExtensionManager {
         this.ws.close();
         this.ws = null;
       }
+      if (this.connectionRetryTimer) {
+        clearTimeout(this.connectionRetryTimer);
+        this.connectionRetryTimer = null;
+      }
+      this.isConnecting = false;
     });
   }
 
@@ -269,38 +280,43 @@ class ExtensionManager {
   }
 
   connectWebSocket() {
+    if (this.isConnecting) {
+      console.log('Already connecting, skipping...');
+      return;
+    }
+
     this.checkAuthentication((isAuthenticated) => {
       if (!isAuthenticated) {
         console.log('Not authenticated. Skipping WebSocket connection.');
         return;
       }
 
-      chrome.storage.local.get(['authToken', 'wsConnectionActive'], (result) => {
+      chrome.storage.local.get(['authToken'], (result) => {
         const token = result.authToken;
-        const wsConnectionActive = result.wsConnectionActive || false;
 
         if (!token) {
           console.log('No auth token available for WebSocket connection.');
           return;
         }
 
-        if (wsConnectionActive && this.ws && this.ws.readyState === WebSocket.OPEN) {
-          console.log('WebSocket already connected and active.');
-          return;
+        // Clear any existing retry timer
+        if (this.connectionRetryTimer) {
+          clearTimeout(this.connectionRetryTimer);
+          this.connectionRetryTimer = null;
         }
 
+        this.isConnecting = true;
         const apiBaseUrl = this.getApiBaseUrl();
         console.log('Attempting to connect WebSocket...');
 
         try {
-          // Fixed WebSocket URL - ensure correct path
           this.ws = new WebSocket(`${apiBaseUrl.replace('https://', 'wss://')}/ws?token=${encodeURIComponent(token)}`);
           
-          chrome.storage.local.set({ wsConnectionActive: true });
-
           this.ws.onopen = () => {
             console.log('WebSocket connected successfully');
+            this.isConnecting = false;
             this.reconnectAttempts = 0;
+            chrome.storage.local.set({ wsConnectionActive: true });
             this.startPing();
             this.requestNextNotification();
           };
@@ -310,16 +326,21 @@ class ExtensionManager {
           };
 
           this.ws.onclose = (event) => {
+            this.isConnecting = false;
             this.handleWebSocketClose(event);
           };
 
           this.ws.onerror = (error) => {
             console.error('WebSocket error:', error);
-            this.ws.close();
+            this.isConnecting = false;
+            if (this.ws) {
+              this.ws.close();
+            }
           };
 
         } catch (error) {
           console.error('Failed to create WebSocket:', error);
+          this.isConnecting = false;
           chrome.storage.local.set({ wsConnectionActive: false });
         }
       });
@@ -364,7 +385,6 @@ class ExtensionManager {
   }
 
   processNotification(data) {
-    // Check for duplicate messages
     if (data.messageId && this.processedMessages.has(data.messageId)) {
       console.log('Duplicate message ignored:', data.messageId);
       return;
@@ -372,7 +392,6 @@ class ExtensionManager {
 
     if (data.messageId) {
       this.processedMessages.add(data.messageId);
-      // Keep only last 1000 messages to prevent memory leak
       if (this.processedMessages.size > 1000) {
         const iterator = this.processedMessages.entries();
         for (let i = 0; i < 500; i++) {
@@ -383,7 +402,6 @@ class ExtensionManager {
       }
     }
 
-    // Handle different notification types
     if (data.type === 'private') {
       chrome.storage.local.get(['userEmail'], (result) => {
         const userEmail = result.userEmail;
@@ -408,27 +426,25 @@ class ExtensionManager {
       this.pingTimer = null;
     }
 
-    // Handle different close codes
     if (event.code === 1008) {
       console.log('Connection rejected by server. Retrying in 30 seconds...');
       this.connectionRetryTimer = setTimeout(() => this.connectWebSocket(), 30000);
       return;
     }
 
-    // Exponential backoff for reconnection
+    // Only retry if we haven't exceeded max attempts
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       const delay = Math.min(
         this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts),
         300000 // Max 5 minutes
-      ) + Math.random() * 1000;
-      
-      console.log(`Reconnecting in ${delay/1000} seconds... (Attempt ${this.reconnectAttempts + 1})`);
+      );
+            console.log(`Reconnecting in ${delay/1000} seconds... (Attempt ${this.reconnectAttempts + 1})`);
       
       this.connectionRetryTimer = setTimeout(() => this.connectWebSocket(), delay);
       this.reconnectAttempts++;
     } else {
       console.error('Max reconnect attempts reached. Will retry on next keep-alive.');
-      this.reconnectAttempts = 0;
+      this.reconnectAttempts = 0; // Reset for next keep-alive attempt
     }
   }
 
@@ -579,14 +595,16 @@ class ExtensionManager {
           if (data.message === 'OTP verified successfully') {
             this.setAuthentication(data.token, data.email, () => {
               sendResponse({ isAuthenticated: true });
-              this.connectWebSocket();
+              setTimeout(() => {
+                this.connectWebSocket();
+              }, 1000); // Delay connection after authentication
             });
           } else {
             sendResponse({ error: data.error });
           }
         })
         .catch(error => {
-                    clearTimeout(timeoutId);
+          clearTimeout(timeoutId);
           console.error('Fetch error for verifyOTP:', error.message);
           if (error.name === 'AbortError') {
             sendResponse({ error: 'Request timed out. Please try again.' });
@@ -611,7 +629,6 @@ class ExtensionManager {
 
   updatePopupSettings(popupsEnabled, sendResponse) {
     chrome.storage.local.set({ popupsEnabled: popupsEnabled }, () => {
-      // Also update the server connection
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({
           type: 'updatePopupSettings',
@@ -629,7 +646,6 @@ class ExtensionManager {
       })
       .catch((error) => {
         console.error('Failed to open settings:', error);
-        // Fallback: create settings window
         this.createAuthWindow();
         sendResponse({ success: true });
       });
@@ -645,7 +661,6 @@ class ExtensionManager {
     });
   }
 
-  // Cleanup method
   cleanup() {
     if (this.pingTimer) {
       clearTimeout(this.pingTimer);
@@ -664,6 +679,7 @@ class ExtensionManager {
       this.ws = null;
     }
     this.processedMessages.clear();
+    this.isConnecting = false;
   }
 }
 
@@ -675,12 +691,10 @@ self.addEventListener('beforeunload', () => {
   extensionManager.cleanup();
 });
 
-// Handle service worker errors
 self.addEventListener('error', (event) => {
   console.error('Service worker error:', event.error);
 });
 
-// Handle unhandled promise rejections
 self.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
 });
