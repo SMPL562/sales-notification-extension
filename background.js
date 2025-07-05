@@ -120,18 +120,25 @@ class ExtensionManager {
   }
 
   handleAlarm(alarm) {
-    if (alarm.name === 'authPrompt') {
-      console.log('Auth prompt alarm triggered');
-      this.checkAuthentication((isAuthenticated) => {
-        if (!isAuthenticated) {
-          this.showAuthPopup();
-        }
-      });
-    } else if (alarm.name === 'keepAlive') {
-      console.log('Keep alive alarm triggered');
-      this.checkConnection();
+  if (alarm.name === 'authPrompt') {
+    console.log('Auth prompt alarm triggered');
+    
+    // Don't show auth popup if one is already open
+    if (this.authWindowId !== null) {
+      console.log('Auth window already open, skipping auth prompt');
+      return;
     }
+    
+    this.checkAuthentication((isAuthenticated) => {
+      if (!isAuthenticated) {
+        this.showAuthPopup();
+      }
+    });
+  } else if (alarm.name === 'keepAlive') {
+    console.log('Keep alive alarm triggered');
+    this.checkConnection();
   }
+}
 
   handleMessage(request, sender, sendResponse) {
     try {
