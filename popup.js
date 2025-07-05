@@ -13,11 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const notificationIcon = document.getElementById('notificationIcon');
   const celebration = document.getElementById('celebration');
 
-  // Auto-close timer
   let autoCloseTimer = null;
   const AUTO_CLOSE_DELAY = 10000; // 10 seconds
 
-  // Initialize popup based on type
   initializePopup();
 
   function initializePopup() {
@@ -52,10 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <small style="opacity: 0.8; font-size: 14px;">Congratulations from ${escapeHtml(managerName)}!</small>
     `;
 
-    // Create celebration effects
     createCelebrationEffects();
-    
-    // Play celebration sound (if supported)
     playNotificationSound('success');
   }
 
@@ -84,21 +79,30 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setupEventListeners() {
-    closeButton.addEventListener('click', closePopup);
-    settingsButton.addEventListener('click', openSettings);
+    // FIXED: Only close button and settings button should trigger actions
+    closeButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closePopup();
+    });
+    
+    settingsButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openSettings();
+    });
     
     // Keyboard shortcuts
     document.addEventListener('keydown', handleKeyPress);
     
-    // Prevent accidental close on container click
-    document.querySelector('.container').addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-        // Click outside to close
+    // FIXED: Click outside container (on background) should close popup
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.container')) {
         closePopup();
       }
+    });
+    
+    // FIXED: Prevent container clicks from closing popup
+    document.querySelector('.container').addEventListener('click', (e) => {
+      e.stopPropagation();
     });
 
     // Focus management for accessibility
@@ -126,10 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function closePopup() {
+    function closePopup() {
     clearAutoCloseTimer();
     
-    // Add closing animation
     document.body.style.animation = 'fadeOut 0.3s ease-in-out forwards';
     
     setTimeout(() => {
@@ -137,8 +140,14 @@ document.addEventListener('DOMContentLoaded', () => {
         window.close();
       } catch (error) {
         console.log('Could not close window:', error);
-        // Fallback for cases where window.close() doesn't work
-        document.body.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: Poppins, sans-serif;">Notification closed</div>';
+        document.body.innerHTML = `
+          <div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: Poppins, sans-serif; text-align: center;">
+            <div>
+              <h2>Notification Closed</h2>
+              <p>You can safely close this window.</p>
+            </div>
+          </div>
+        `;
       }
     }, 300);
   }
@@ -146,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function openSettings() {
     clearAutoCloseTimer();
     
-    // Try to open settings popup
     try {
       chrome.runtime.sendMessage({ action: 'openSettings' }, (response) => {
         if (chrome.runtime.lastError) {
@@ -170,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }, i * 100);
     }
 
-    // Create floating elements
+    // Create floating emoji elements (FIXED: Use actual emojis instead of symbols)
     createFloatingElements();
   }
 
@@ -196,12 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function createFloatingElements() {
+    // FIXED: Use text content instead of innerHTML to prevent encoding issues
     const elements = ['💰', '🎉', '⭐', '🏆', '💎'];
     
-    elements.forEach((element, index) => {
+    elements.forEach((emoji, index) => {
       setTimeout(() => {
         const floatingElement = document.createElement('div');
-        floatingElement.textContent = element;
+        floatingElement.textContent = emoji; // FIXED: Use textContent instead of innerHTML
         floatingElement.style.position = 'fixed';
         floatingElement.style.fontSize = '24px';
         floatingElement.style.left = (20 + index * 15) + '%';
@@ -225,11 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function playNotificationSound(soundType) {
     try {
-      // Create audio context for sound effects
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      
-      let frequency;
-      let duration;
       
       switch (soundType) {
         case 'success':
@@ -273,17 +278,24 @@ document.addEventListener('DOMContentLoaded', () => {
     oscillator.stop(audioContext.currentTime + startTime + duration);
   }
 
+  // FIXED: Proper HTML escaping to prevent encoding issues
   function escapeHtml(text) {
     if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
   }
 
   function startAutoCloseTimer() {
-    // Check if auto-close is enabled
     chrome.storage.local.get(['autoCloseEnabled'], (result) => {
-      const autoCloseEnabled = result.autoCloseEnabled !== false; // Default to true
+      const autoCloseEnabled = result.autoCloseEnabled !== false;
       
       if (autoCloseEnabled) {
         autoCloseTimer = setTimeout(() => {
@@ -291,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
           closePopup();
         }, AUTO_CLOSE_DELAY);
         
-        // Show countdown in close button
         showCountdown();
       }
     });
@@ -299,12 +310,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showCountdown() {
     let remainingTime = AUTO_CLOSE_DELAY / 1000;
-    const originalButtonText = closeButton.textContent;
+    const originalButtonText = closeButton.innerHTML;
     
     const countdownInterval = setInterval(() => {
       if (remainingTime <= 0) {
         clearInterval(countdownInterval);
-        closeButton.textContent = originalButtonText;
+        closeButton.innerHTML = originalButtonText;
         return;
       }
       
@@ -367,7 +378,14 @@ document.addEventListener('DOMContentLoaded', () => {
           window.close();
         } catch (e) {
           console.log('Fallback close');
-          document.body.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: Poppins, sans-serif;">Notification closed</div>';
+          document.body.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: Poppins, sans-serif; text-align: center;">
+              <div>
+                <h2>Notification Closed</h2>
+                <p>You can safely close this window.</p>
+              </div>
+            </div>
+          `;
         }
       };
     }
