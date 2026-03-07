@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    name: Validate Extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest.json
+        run: |
+          python3 -c "
+          import json, sys
+          with open('manifest.json') as f:
+              m = json.load(f)
+          assert m.get('manifest_version') == 3, 'Not MV3'
+          assert m.get('name'), 'Missing name'
+          print(f'Valid: {m[\"name\"]} (MV{m[\"manifest_version\"]})')
+          "
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Syntax check JS files
+        run: |
+          for f in *.js; do
+            node --check "$f" && echo "OK: $f" || echo "::error::Syntax error in $f"
+          done
