@@ -1,22 +1,35 @@
+# =============================================
+# Sales Notification Extension - CI Pipeline
+# =============================================
+# Manifest Validation → JS Syntax → Summary
+# =============================================
+
 name: CI
 
 on:
   push:
     branches: [main, master]
+    paths-ignore: ['*.md', 'docs/**', '.claude/**', '.vscode/**']
   pull_request:
     branches: [main, master]
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  validate:
-    name: Validate Extension
+  ci:
+    name: CI Quality Gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Validate manifest.json
+        id: manifest
         run: |
           python3 -c "
           import json, sys
@@ -24,13 +37,49 @@ jobs:
               m = json.load(f)
           assert m.get('manifest_version') == 3, 'Not MV3'
           assert m.get('name'), 'Missing name'
-          print(f'Valid: {m[\"name\"]} (MV{m[\"manifest_version\"]})')
+          assert m.get('version'), 'Missing version'
+          print(f'✅ Valid: {m[\"name\"]} v{m[\"version\"]} (MV{m[\"manifest_version\"]})')
+          # Validate all referenced files exist
+          import os
+          if 'background' in m and 'service_worker' in m['background']:
+              sw = m['background']['service_worker']
+              assert os.path.exists(sw), f'Missing service worker: {sw}'
+              print(f'✅ Service worker: {sw}')
           "
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
+
       - name: Syntax check JS files
+        id: syntax
         run: |
+          ERRORS=0
+          CHECKED=0
           for f in *.js; do
-            node --check "$f" && echo "OK: $f" || echo "::error::Syntax error in $f"
+            [ -f "$f" ] || continue
+            CHECKED=$((CHECKED + 1))
+            if node --check "$f" 2>/dev/null; then
+              echo "✅ $f"
+            else
+              echo "::error file=$f::Syntax error in $f"
+              ERRORS=$((ERRORS + 1))
+            fi
           done
+          echo "Checked $CHECKED files, $ERRORS errors"
+          if [ $ERRORS -gt 0 ]; then
+            exit 1
+          fi
+
+      - name: CI Summary
+        if: always()
+        run: |
+          echo "## CI Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Manifest Validation | ${{ steps.manifest.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| JS Syntax | ${{ steps.syntax.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
