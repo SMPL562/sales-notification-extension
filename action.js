@@ -148,9 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateConnectionStatus() {
-    // This is a simple visual indicator - in a real app you'd check actual connection
-    connectionStatus.className = 'status-indicator status-connected';
-    connectionInfo.textContent = 'Connected to notification server';
+    chrome.storage.local.get(['wsConnectionActive'], (result) => {
+      if (result.wsConnectionActive) {
+        connectionStatus.className = 'status-indicator status-connected';
+        connectionInfo.textContent = 'Connected to notification server';
+      } else {
+        connectionStatus.className = 'status-indicator status-disconnected';
+        connectionInfo.textContent = 'Reconnecting to server...';
+      }
+    });
   }
 
   function handleSubmit() {
